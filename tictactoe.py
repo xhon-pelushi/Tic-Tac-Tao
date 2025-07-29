@@ -2,6 +2,9 @@
 import os
 import random
 import time
+import threading
+import signal
+import sys
 
 # ANSI color codes for colorful output
 class Colors:
@@ -201,17 +204,20 @@ def get_game_mode():
     print(f"\n{Colors.YELLOW}Choose your game mode:{Colors.RESET}")
     print(f"{Colors.BLUE}1.{Colors.RESET} Two Players (Human vs Human)")
     print(f"{Colors.BLUE}2.{Colors.RESET} Single Player vs AI")
+    print(f"{Colors.BLUE}3.{Colors.RESET} Time Attack Mode (Human vs AI with time limit)")
     print()
     
     while True:
         try:
-            choice = input(f"{Colors.CYAN}Enter your choice (1 or 2): {Colors.RESET}").strip()
+            choice = input(f"{Colors.CYAN}Enter your choice (1, 2, or 3): {Colors.RESET}").strip()
             if choice == "1":
                 return "human_vs_human"
             elif choice == "2":
                 return "human_vs_ai"
+            elif choice == "3":
+                return "time_attack"
             else:
-                print(f"{Colors.RED}❌ Please enter 1 or 2!{Colors.RESET}")
+                print(f"{Colors.RED}❌ Please enter 1, 2, or 3!{Colors.RESET}")
         except KeyboardInterrupt:
             print(f"\n{Colors.YELLOW}Goodbye! 👋{Colors.RESET}")
             exit()
@@ -235,6 +241,32 @@ def get_ai_difficulty():
                 return "hard"
             else:
                 print(f"{Colors.RED}❌ Please enter 1, 2, or 3!{Colors.RESET}")
+        except KeyboardInterrupt:
+            print(f"\n{Colors.YELLOW}Goodbye! 👋{Colors.RESET}")
+            exit()
+
+def get_time_limit():
+    """Get time limit selection from user"""
+    print(f"\n{Colors.YELLOW}Choose time limit per move:{Colors.RESET}")
+    print(f"{Colors.GREEN}1.{Colors.RESET} 5 seconds (Lightning fast)")
+    print(f"{Colors.YELLOW}2.{Colors.RESET} 10 seconds (Quick thinking)")
+    print(f"{Colors.BLUE}3.{Colors.RESET} 15 seconds (Standard)")
+    print(f"{Colors.MAGENTA}4.{Colors.RESET} 30 seconds (Relaxed)")
+    print()
+    
+    while True:
+        try:
+            choice = input(f"{Colors.CYAN}Enter choice (1, 2, 3, or 4): {Colors.RESET}").strip()
+            if choice == "1":
+                return 5
+            elif choice == "2":
+                return 10
+            elif choice == "3":
+                return 15
+            elif choice == "4":
+                return 30
+            else:
+                print(f"{Colors.RED}❌ Please enter 1, 2, 3, or 4!{Colors.RESET}")
         except KeyboardInterrupt:
             print(f"\n{Colors.YELLOW}Goodbye! 👋{Colors.RESET}")
             exit()
@@ -264,6 +296,86 @@ def get_player_move(current_player):
             print(f"{Colors.RED}❌ Please enter a valid number!{Colors.RESET}")
             continue
 
+class TimedInput:
+    def __init__(self, timeout):
+        self.timeout = timeout
+        self.user_input = None
+        self.timeout_occurred = False
+    
+    def get_input(self, prompt):
+        """Get input with timeout"""
+        self.user_input = None
+        self.timeout_occurred = False
+        
+        # Start countdown display in separate thread
+        countdown_thread = threading.Thread(target=self._countdown_display)
+        countdown_thread.daemon = True
+        countdown_thread.start()
+        
+        # Get user input
+        try:
+            self.user_input = input(prompt)
+        except (EOFError, KeyboardInterrupt):
+            self.timeout_occurred = True
+            return None
+            
+        return self.user_input if not self.timeout_occurred else None
+    
+    def _countdown_display(self):
+        """Display countdown timer"""
+        for remaining in range(self.timeout, 0, -1):
+            if self.user_input is not None:
+                return
+            
+            # Display countdown
+            color = Colors.RED if remaining <= 3 else Colors.YELLOW if remaining <= 5 else Colors.GREEN
+            print(f"\r{color}⏰ Time remaining: {remaining} seconds{Colors.RESET}", end="", flush=True)
+            time.sleep(1)
+        
+        if self.user_input is None:
+            self.timeout_occurred = True
+            print(f"\r{Colors.RED}⏰ TIME'S UP! Making random move...{Colors.RESET}")
+
+def get_timed_player_move(current_player, time_limit, board):
+    """Get player move with time limit"""
+    while True:
+        try:
+            player_color = Colors.RED if current_player == "X" else Colors.GREEN
+            print(f"\n{player_color}{Colors.BOLD}Player {current_player}{Colors.RESET}, choose your move!")
+            
+            timed_input = TimedInput(time_limit)
+            position_str = timed_input.get_input(f"{Colors.CYAN}Enter position number (1-9): {Colors.RESET}")
+            
+            if timed_input.timeout_occurred or position_str is None:
+                # Time's up! Make random move
+                available_positions = get_available_positions(board)
+                if available_positions:
+                    position = random.choice(available_positions)
+                    print(f"{Colors.RED}⏰ Random move selected: {position}{Colors.RESET}")
+                    time.sleep(1)
+                    return position
+                return None
+            
+            position_str = position_str.strip()
+            if not position_str:
+                print(f"{Colors.RED}❌ Please enter a number!{Colors.RESET}")
+                continue
+                
+            position = int(position_str)
+            
+            if position < 1 or position > 9:
+                print(f"{Colors.RED}❌ Please enter a number between 1 and 9!{Colors.RESET}")
+                continue
+                
+            return position
+            
+        except ValueError:
+            print(f"{Colors.RED}❌ Please enter a valid number!{Colors.RESET}")
+            continue
+        except KeyboardInterrupt:
+            print(f"\n{Colors.YELLOW}Game interrupted! 👋{Colors.RESET}")
+            sys.exit()
+
 def play_game():
     """Main game loop with mode selection"""
     # Get game mode
@@ -272,13 +384,24 @@ def play_game():
     # Setup game variables
     ai_difficulty = None
     ai_player = None
+    time_limit = None
     
-    if game_mode == "human_vs_ai":
+    if game_mode in ["human_vs_ai", "time_attack"]:
         ai_difficulty = get_ai_difficulty()
         ai_player = "O"  # AI always plays as O
-        clear_screen()
-        print(f"{Colors.MAGENTA}{Colors.BOLD}🎮 Human vs AI ({ai_difficulty.title()}) 🎮{Colors.RESET}")
-        print(f"{Colors.YELLOW}You are {Colors.RED}X{Colors.YELLOW}, AI is {Colors.GREEN}O{Colors.YELLOW}. You go first!{Colors.RESET}")
+        
+        if game_mode == "time_attack":
+            time_limit = get_time_limit()
+            clear_screen()
+            print(f"{Colors.MAGENTA}{Colors.BOLD}⚡ TIME ATTACK MODE ⚡{Colors.RESET}")
+            print(f"{Colors.YELLOW}AI Difficulty: {ai_difficulty.title()}{Colors.RESET}")
+            print(f"{Colors.CYAN}Time Limit: {time_limit} seconds per move{Colors.RESET}")
+            print(f"{Colors.YELLOW}You are {Colors.RED}X{Colors.YELLOW}, AI is {Colors.GREEN}O{Colors.YELLOW}. You go first!{Colors.RESET}")
+            print(f"{Colors.RED}⚠️  If you don't move in time, a random move will be made!{Colors.RESET}")
+        else:
+            clear_screen()
+            print(f"{Colors.MAGENTA}{Colors.BOLD}🎮 Human vs AI ({ai_difficulty.title()}) 🎮{Colors.RESET}")
+            print(f"{Colors.YELLOW}You are {Colors.RED}X{Colors.YELLOW}, AI is {Colors.GREEN}O{Colors.YELLOW}. You go first!{Colors.RESET}")
     else:
         clear_screen()
         print(f"{Colors.MAGENTA}{Colors.BOLD}🎮 Human vs Human 🎮{Colors.RESET}")
@@ -294,7 +417,7 @@ def play_game():
         print_board(board)
         
         # Get move based on current player and game mode
-        if game_mode == "human_vs_ai" and current_player == ai_player:
+        if game_mode in ["human_vs_ai", "time_attack"] and current_player == ai_player:
             # AI move
             position = get_ai_move(board, ai_player, ai_difficulty)
             if position is None:
@@ -303,16 +426,24 @@ def play_game():
             time.sleep(1.5)  # Show AI choice briefly
         else:
             # Human move
-            if game_mode == "human_vs_ai":
+            if game_mode == "time_attack":
+                position = get_timed_player_move("You", time_limit, board)
+            elif game_mode == "human_vs_ai":
                 position = get_player_move("You")
             else:
                 position = get_player_move(current_player)
         
+        if position is None:
+            continue
+            
         row, col = position_to_coordinates(position)
         
         # Validate and make move
         if not make_move(board, row, col, current_player):
-            if game_mode == "human_vs_ai" and current_player != ai_player:
+            if game_mode in ["human_vs_ai", "time_attack"] and current_player != ai_player:
+                print(f"{Colors.RED}❌ That position is already taken! Try again.{Colors.RESET}")
+                input(f"{Colors.CYAN}Press Enter to continue...{Colors.RESET}")
+            elif game_mode == "human_vs_human":
                 print(f"{Colors.RED}❌ That position is already taken! Try again.{Colors.RESET}")
                 input(f"{Colors.CYAN}Press Enter to continue...{Colors.RESET}")
             continue
@@ -323,11 +454,17 @@ def play_game():
             print_board(board)
             winner_color = Colors.RED if current_player == "X" else Colors.GREEN
             
-            if game_mode == "human_vs_ai":
+            if game_mode in ["human_vs_ai", "time_attack"]:
                 if current_player == ai_player:
-                    print(f"{Colors.RED}🤖 AI wins! Better luck next time! 🤖{Colors.RESET}")
+                    if game_mode == "time_attack":
+                        print(f"{Colors.RED}🤖 AI wins the Time Attack! Better luck next time! ⚡{Colors.RESET}")
+                    else:
+                        print(f"{Colors.RED}🤖 AI wins! Better luck next time! 🤖{Colors.RESET}")
                 else:
-                    print(f"{Colors.YELLOW}🎉 Congratulations! You beat the AI! 🎉{Colors.RESET}")
+                    if game_mode == "time_attack":
+                        print(f"{Colors.YELLOW}🎉 Amazing! You beat the AI in Time Attack mode! ⚡🎉{Colors.RESET}")
+                    else:
+                        print(f"{Colors.YELLOW}🎉 Congratulations! You beat the AI! 🎉{Colors.RESET}")
             else:
                 print(f"{Colors.YELLOW}🎉 Congratulations! Player {winner_color}{Colors.BOLD}{current_player}{Colors.RESET}{Colors.YELLOW} wins! 🎉{Colors.RESET}")
             break
@@ -336,8 +473,11 @@ def play_game():
         if is_draw(board):
             clear_screen()
             print_board(board)
-            if game_mode == "human_vs_ai":
-                print(f"{Colors.BLUE}🤝 It's a draw! You played well against the AI!{Colors.RESET}")
+            if game_mode in ["human_vs_ai", "time_attack"]:
+                if game_mode == "time_attack":
+                    print(f"{Colors.BLUE}🤝 Time Attack Draw! You held your ground against the AI! ⚡{Colors.RESET}")
+                else:
+                    print(f"{Colors.BLUE}🤝 It's a draw! You played well against the AI!{Colors.RESET}")
             else:
                 print(f"{Colors.BLUE}🤝 It's a draw! Good game!{Colors.RESET}")
             break
