@@ -44,8 +44,8 @@ A colorful, feature-rich terminal-based Tic-Tac-Toe game written in Python with 
 1. Run the game: `python tictactoe.py`
 2. Choose your game mode:
    - **Mode 1**: Human vs Human
-   - **Mode 2**: Human vs AI (choose difficulty)
-   - **Mode 3**: ⚡ Time Attack - Human vs AI with time limits!
+   - **Mode 2**: Human vs AI🧠 (choose difficulty)
+   - **Mode 3**: ⚡ Time Attack - Human vs AI🧠 with time limits!
 3. In Time Attack mode, select your time limit (5-30 seconds per move)
 4. Players take turns choosing positions 1-9:
 # Tic-Tac-Tao ⚡🎮
