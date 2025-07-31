@@ -16,16 +16,30 @@ A colorful, user-friendly terminal-based Tic-Tac-Toe game written in Python.
 - **Play again option** after each game
 
 ### Game Features
-- Two-player gameplay (X and O)
-- Win condition detection (rows, columns, diagonals)
-- Draw condition detection
-- Input validation and error handling
-- Turn-based gameplay with clear player indicators
+- **Two-player gameplay** (Human vs Human)
+- **Single-player vs AI** with three difficulty levels:
+  - **Easy**: Random moves for beginners
+  - **Medium**: Smart blocking and winning attempts  
+  - **Hard**: Unbeatable minimax algorithm
+- **Comprehensive statistics tracking**:
+  - Win/loss/draw records for all game modes
+  - Performance tracking by AI difficulty
+  - Game history with timestamps
+  - Win rate calculations and percentages
+- **Turn-based gameplay** with clear player indicators
+- **Win condition detection** (rows, columns, diagonals)
+- **Draw condition detection**
+- **Input validation** and error handling
 
 ## How to Play 🎯
 
 1. Run the game: `python3 tictactoe.py`
-2. Players take turns choosing positions 1-9:
+2. Choose your game mode:
+   - **Human vs Human**: Classic two-player mode
+   - **Human vs AI**: Challenge the computer
+   - **View Statistics**: See your game history and performance
+3. For AI games, select difficulty (Easy/Medium/Hard)
+4. Players take turns choosing positions 1-9:
    ```
    Position Reference:
    1 | 2 | 3
@@ -34,10 +48,11 @@ A colorful, user-friendly terminal-based Tic-Tac-Toe game written in Python.
    ---------
    7 | 8 | 9
    ```
-3. Player X goes first (displayed in red)
-4. Player O goes second (displayed in green)
-5. First player to get three in a row wins!
-6. Choose to play again or exit after each game
+5. Player X goes first (displayed in red)
+6. Player O goes second (displayed in green)  
+7. First player to get three in a row wins!
+8. View your statistics anytime to track progress
+9. Choose to play again or exit after each game
 
 ## Requirements 📋
 
@@ -46,6 +61,14 @@ A colorful, user-friendly terminal-based Tic-Tac-Toe game written in Python.
 
 ## Recent Improvements 🚀
 
+### Latest Update - Game Statistics System
+- **📊 Comprehensive statistics tracking** - Win/loss records, game history
+- **📈 Performance analytics** - Win rates by difficulty, recent games view
+- **💾 Persistent data storage** - Stats saved to `game_stats.json`
+- **🎯 Quick stats** - Post-game statistics summary
+
+### Previous Updates
+- Added AI opponent with three difficulty levels (Easy, Medium, Hard)
 - Added numbered position system (1-9) instead of row/column coordinates
 - Implemented colorful output using ANSI escape sequences
 - Enhanced visual layout with reference grid

@@ -2,6 +2,8 @@
 import os
 import random
 import time
+import json
+from datetime import datetime
 
 # ANSI color codes for colorful output
 class Colors:
@@ -193,25 +195,165 @@ def get_ai_move(board, ai_player, difficulty):
     else:
         return ai_easy_move(board)  # Default to easy
 
+# Statistics Functions
+def load_statistics():
+    """Load game statistics from file"""
+    try:
+        with open('game_stats.json', 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Return default statistics structure
+        return {
+            'total_games': 0,
+            'human_vs_human': {
+                'games': 0,
+                'player_x_wins': 0,
+                'player_o_wins': 0,
+                'draws': 0
+            },
+            'human_vs_ai': {
+                'games': 0,
+                'human_wins': 0,
+                'ai_wins': 0,
+                'draws': 0,
+                'difficulty_stats': {
+                    'easy': {'games': 0, 'human_wins': 0, 'ai_wins': 0, 'draws': 0},
+                    'medium': {'games': 0, 'human_wins': 0, 'ai_wins': 0, 'draws': 0},
+                    'hard': {'games': 0, 'human_wins': 0, 'ai_wins': 0, 'draws': 0}
+                }
+            },
+            'game_history': []
+        }
+
+def save_statistics(stats):
+    """Save game statistics to file"""
+    try:
+        with open('game_stats.json', 'w') as f:
+            json.dump(stats, f, indent=2)
+    except Exception as e:
+        print(f"{Colors.RED}Warning: Could not save statistics - {e}{Colors.RESET}")
+
+def update_statistics(stats, game_mode, winner, ai_difficulty=None):
+    """Update statistics after a game"""
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Update total games
+    stats['total_games'] += 1
+    
+    # Create game record
+    game_record = {
+        'timestamp': timestamp,
+        'mode': game_mode,
+        'winner': winner,
+        'ai_difficulty': ai_difficulty
+    }
+    
+    # Add to history (keep last 50 games)
+    stats['game_history'].append(game_record)
+    if len(stats['game_history']) > 50:
+        stats['game_history'] = stats['game_history'][-50:]
+    
+    # Update mode-specific stats
+    if game_mode == 'human_vs_human':
+        mode_stats = stats['human_vs_human']
+        mode_stats['games'] += 1
+        if winner == 'X':
+            mode_stats['player_x_wins'] += 1
+        elif winner == 'O':
+            mode_stats['player_o_wins'] += 1
+        else:  # Draw
+            mode_stats['draws'] += 1
+            
+    elif game_mode == 'human_vs_ai':
+        mode_stats = stats['human_vs_ai']
+        mode_stats['games'] += 1
+        difficulty_stats = mode_stats['difficulty_stats'][ai_difficulty]
+        difficulty_stats['games'] += 1
+        
+        if winner == 'human':
+            mode_stats['human_wins'] += 1
+            difficulty_stats['human_wins'] += 1
+        elif winner == 'ai':
+            mode_stats['ai_wins'] += 1
+            difficulty_stats['ai_wins'] += 1
+        else:  # Draw
+            mode_stats['draws'] += 1
+            difficulty_stats['draws'] += 1
+
+def display_statistics():
+    """Display comprehensive game statistics"""
+    stats = load_statistics()
+    clear_screen()
+    
+    print(f"{Colors.MAGENTA}{Colors.BOLD}📊 GAME STATISTICS 📊{Colors.RESET}")
+    print(f"{Colors.CYAN}="*50 + Colors.RESET)
+    
+    if stats['total_games'] == 0:
+        print(f"\n{Colors.YELLOW}No games played yet! Start playing to see your stats.{Colors.RESET}")
+        input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.RESET}")
+        return
+    
+    print(f"\n{Colors.BOLD}📈 Overall Statistics:{Colors.RESET}")
+    print(f"  Total Games Played: {Colors.YELLOW}{stats['total_games']}{Colors.RESET}")
+    
+    # Human vs Human stats
+    hvh = stats['human_vs_human']
+    if hvh['games'] > 0:
+        print(f"\n{Colors.BOLD}👥 Human vs Human ({hvh['games']} games):{Colors.RESET}")
+        print(f"  Player X Wins: {Colors.RED}{hvh['player_x_wins']}{Colors.RESET} ({hvh['player_x_wins']/hvh['games']*100:.1f}%)")
+        print(f"  Player O Wins: {Colors.GREEN}{hvh['player_o_wins']}{Colors.RESET} ({hvh['player_o_wins']/hvh['games']*100:.1f}%)")
+        print(f"  Draws: {Colors.BLUE}{hvh['draws']}{Colors.RESET} ({hvh['draws']/hvh['games']*100:.1f}%)")
+    
+    # Human vs AI stats
+    hva = stats['human_vs_ai']
+    if hva['games'] > 0:
+        print(f"\n{Colors.BOLD}🤖 Human vs AI ({hva['games']} games):{Colors.RESET}")
+        print(f"  Human Wins: {Colors.YELLOW}{hva['human_wins']}{Colors.RESET} ({hva['human_wins']/hva['games']*100:.1f}%)")
+        print(f"  AI Wins: {Colors.RED}{hva['ai_wins']}{Colors.RESET} ({hva['ai_wins']/hva['games']*100:.1f}%)")
+        print(f"  Draws: {Colors.BLUE}{hva['draws']}{Colors.RESET} ({hva['draws']/hva['games']*100:.1f}%)")
+        
+        # Difficulty breakdown
+        print(f"\n{Colors.BOLD}  📊 Performance by Difficulty:{Colors.RESET}")
+        for difficulty, diff_stats in hva['difficulty_stats'].items():
+            if diff_stats['games'] > 0:
+                win_rate = diff_stats['human_wins'] / diff_stats['games'] * 100
+                color = Colors.GREEN if difficulty == 'easy' else Colors.YELLOW if difficulty == 'medium' else Colors.RED
+                print(f"    {color}{difficulty.title()}{Colors.RESET}: {diff_stats['games']} games, {win_rate:.1f}% win rate")
+    
+    # Recent games
+    if stats['game_history']:
+        print(f"\n{Colors.BOLD}📋 Recent Games (Last 5):{Colors.RESET}")
+        recent = stats['game_history'][-5:]
+        for game in reversed(recent):
+            mode_str = "HvH" if game['mode'] == 'human_vs_human' else f"HvAI({game['ai_difficulty']})"
+            winner_str = game['winner'] if game['winner'] != 'draw' else 'Draw'
+            print(f"  {game['timestamp'][:16]} | {mode_str} | Winner: {winner_str}")
+    
+    input(f"\n{Colors.CYAN}Press Enter to continue...{Colors.RESET}")
+
 def get_game_mode():
     """Get game mode selection from user"""
     clear_screen()
     print(f"{Colors.MAGENTA}{Colors.BOLD}🎮 TIC-TAC-TOE GAME MODES 🎮{Colors.RESET}")
     print(f"{Colors.CYAN}="*50 + Colors.RESET)
-    print(f"\n{Colors.YELLOW}Choose your game mode:{Colors.RESET}")
+    print(f"\n{Colors.YELLOW}Choose your option:{Colors.RESET}")
     print(f"{Colors.BLUE}1.{Colors.RESET} Two Players (Human vs Human)")
     print(f"{Colors.BLUE}2.{Colors.RESET} Single Player vs AI")
+    print(f"{Colors.MAGENTA}3.{Colors.RESET} View Game Statistics")
     print()
     
     while True:
         try:
-            choice = input(f"{Colors.CYAN}Enter your choice (1 or 2): {Colors.RESET}").strip()
+            choice = input(f"{Colors.CYAN}Enter your choice (1, 2, or 3): {Colors.RESET}").strip()
             if choice == "1":
                 return "human_vs_human"
             elif choice == "2":
                 return "human_vs_ai"
+            elif choice == "3":
+                display_statistics()
+                continue  # Show menu again after viewing stats
             else:
-                print(f"{Colors.RED}❌ Please enter 1 or 2!{Colors.RESET}")
+                print(f"{Colors.RED}❌ Please enter 1, 2, or 3!{Colors.RESET}")
         except KeyboardInterrupt:
             print(f"\n{Colors.YELLOW}Goodbye! 👋{Colors.RESET}")
             exit()
@@ -265,7 +407,10 @@ def get_player_move(current_player):
             continue
 
 def play_game():
-    """Main game loop with mode selection"""
+    """Main game loop with mode selection and statistics tracking"""
+    # Load statistics at start
+    stats = load_statistics()
+    
     # Get game mode
     game_mode = get_game_mode()
     
@@ -288,6 +433,7 @@ def play_game():
     
     board = [[" " for _ in range(3)] for _ in range(3)]
     current_player = "X"
+    game_result = None
     
     while True:
         clear_screen()
@@ -326,10 +472,13 @@ def play_game():
             if game_mode == "human_vs_ai":
                 if current_player == ai_player:
                     print(f"{Colors.RED}🤖 AI wins! Better luck next time! 🤖{Colors.RESET}")
+                    game_result = "ai"
                 else:
                     print(f"{Colors.YELLOW}🎉 Congratulations! You beat the AI! 🎉{Colors.RESET}")
+                    game_result = "human"
             else:
                 print(f"{Colors.YELLOW}🎉 Congratulations! Player {winner_color}{Colors.BOLD}{current_player}{Colors.RESET}{Colors.YELLOW} wins! 🎉{Colors.RESET}")
+                game_result = current_player
             break
             
         # Check for draw
@@ -340,10 +489,26 @@ def play_game():
                 print(f"{Colors.BLUE}🤝 It's a draw! You played well against the AI!{Colors.RESET}")
             else:
                 print(f"{Colors.BLUE}🤝 It's a draw! Good game!{Colors.RESET}")
+            game_result = "draw"
             break
             
         # Switch players
         current_player = "O" if current_player == "X" else "X"
+    
+    # Update and save statistics
+    if game_result:
+        update_statistics(stats, game_mode, game_result, ai_difficulty)
+        save_statistics(stats)
+        
+        # Show quick stats after game
+        print(f"\n{Colors.CYAN}📊 Quick Stats:{Colors.RESET}")
+        if game_mode == "human_vs_ai":
+            hva = stats['human_vs_ai']
+            win_rate = hva['human_wins'] / hva['games'] * 100 if hva['games'] > 0 else 0
+            print(f"  Total AI games: {hva['games']} | Your win rate: {win_rate:.1f}%")
+        else:
+            hvh = stats['human_vs_human']
+            print(f"  Total H2H games: {hvh['games']}")
     
     # Ask if they want to play again
     print(f"\n{Colors.MAGENTA}Thanks for playing!{Colors.RESET}")
