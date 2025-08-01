@@ -1,0 +1,4 @@
+# Ignore the daily commit automation script
+/daily_commit.bat
+# Ignore the daily update file
+daily_update.txt
