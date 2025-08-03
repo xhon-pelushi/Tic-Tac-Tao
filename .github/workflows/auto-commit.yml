@@ -1,0 +1,27 @@
+name: Auto-Commit Copilot Updates
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # Runs every day at 8:00 AM New York time (12:00 UTC)
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Make minimal change (optional)
+        run: |
+          echo "Run on $(date)" >> .commit-log.txt
+
+      - name: Commit and push as Xhon
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          git config --global user.name "Xhon Pelushi"
+          git config --global user.email "xhon@pelushi.com"
+          git add .
+          git commit -m "improvement" || echo "No changes to commit"
+          git remote set-url origin https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}
+          git push origin HEAD:main
