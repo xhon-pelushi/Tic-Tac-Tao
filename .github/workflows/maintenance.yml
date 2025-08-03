@@ -1,0 +1,61 @@
+name: Project Maintenance
+
+# Regular maintenance checks
+on:
+  schedule:
+    # Runs at 8:00 AM ET (13:00 UTC during EDT, 12:00 UTC during EST)
+    - cron: '0 13 * * *'
+  
+  # Manual trigger option
+  workflow_dispatch:
+
+jobs:
+  daily-update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Update activity log
+      run: |
+        echo "Creating daily activity entry..."
+        
+        # Create or update activity log
+        mkdir -p .github/activity
+        echo "$(date +'%Y-%m-%d %H:%M:%S UTC') - Daily automated check ✅" >> .github/activity/log.txt
+        
+        # Update last activity in README if it exists
+        if grep -q "Last activity:" README.md; then
+          sed -i "s/Last activity:.*/Last activity: $(date +'%Y-%m-%d')/g" README.md
+        else
+          echo "" >> README.md
+          echo "Last activity: $(date +'%Y-%m-%d')" >> README.md
+        fi
+        
+    - name: Create maintenance commit
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "Project Maintenance"
+        
+        # Check if there are changes to commit
+        if git diff --quiet && git diff --staged --quiet; then
+          # If no changes, create a minimal update
+          echo "# Daily Maintenance" > .github/MAINTENANCE.md
+          echo "Last maintenance: $(date)" >> .github/MAINTENANCE.md
+          git add .github/MAINTENANCE.md
+        fi
+        
+        # Always add other changes if they exist
+        git add .
+        
+        # Only commit if there are staged changes
+        if ! git diff --staged --quiet; then
+          git commit -m "Maintenance: Update project status"
+          git push
+          echo "✅ Maintenance completed!"
+        else
+          echo "ℹ️ No maintenance needed today"
+        fi
