@@ -4,6 +4,10 @@ A colorful, feature-rich terminal-based Tic-Tac-Toe game written in Python with 
 
 ## Features ✨
 
+### Game Versions 🎮
+- **Terminal Version** (`tictactoe.py`) - Advanced CLI game with AI and time attack
+- **GUI Version** (`tictactoe_gui.py`) - User-friendly graphical interface using Tkinter
+
 ### Game Modes 🎯
 - **Human vs Human** - Classic two-player mode
 - **Human vs AI** - Challenge the computer with 3 difficulty levels
