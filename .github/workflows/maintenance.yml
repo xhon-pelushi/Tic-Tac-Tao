@@ -9,6 +9,10 @@ on:
   # Manual trigger option
   workflow_dispatch:
 
+# Grant write permissions to the repository
+permissions:
+  contents: write
+
 jobs:
   daily-update:
     runs-on: ubuntu-latest
